@@ -21,7 +21,21 @@ namespace SelfServe
 
         private bool inited = false;
 
-        private void OnLoad(object Sender, EventArgs e)
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        public override void Entry(IModHelper helper)
+        {
+            helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+            helper.Events.GameLoop.ReturnedToTitle += this.OnReturnedToTitle;
+
+            i18n = helper.Translation;
+        }
+
+        /// <summary>Raised after the player loads a save slot and the world is initialised.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
             // params reset
             seedShopCounterTiles = new List<Vector2>();
@@ -68,24 +82,21 @@ namespace SelfServe
             this.inited = true;
         }
 
-        private void OnExit(object Sender, EventArgs e)
+        /// <summary>Raised after the game returns to the title screen.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnReturnedToTitle(object sender, ReturnedToTitleEventArgs e)
         {
             inited = false;
         }
 
-        public override void Entry(IModHelper helper)
+        /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
         {
-            InputEvents.ButtonPressed += this.InputEvents_ButtonPressed;
-            SaveEvents.AfterLoad += this.OnLoad;
-            SaveEvents.AfterReturnToTitle += this.OnExit;
-
-            i18n = helper.Translation;
-        }
-
-        private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
-        {
-            if (this.inited && this.OpenMenuHandler(e.IsActionButton))
-                e.SuppressButton();
+            if (this.inited && this.OpenMenuHandler(e.Button.IsActionButton()))
+                this.Helper.Input.Suppress(e.Button);
         }
 
         private bool OpenMenuHandler(bool isActionKey)

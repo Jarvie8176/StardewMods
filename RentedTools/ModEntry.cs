@@ -22,22 +22,25 @@ namespace RentedTools
         private bool rentedToolsOffered;
         private bool recycleOffered;
 
-        private Dictionary<Tuple<List<Item>, int>, Item> rentedToolRefs;
-
         private ITranslationHelper i18n;
 
 
         private List<Vector2> blackSmithCounterTiles = new List<Vector2>();
 
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            SaveEvents.AfterLoad += this.Bootstrap;
-            MenuEvents.MenuClosed += this.MenuCloseHandler;
+            helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+            helper.Events.Display.MenuChanged += this.OnMenuChanged;
 
             this.i18n = helper.Translation;
         }
 
-        private void Bootstrap(object sender, EventArgs e)
+        /// <summary>Raised after the player loads a save slot and the world is initialised.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
             // params reset
             this.inited = false;
@@ -49,7 +52,6 @@ namespace RentedTools
             this.rentedToolsOffered = false;
             this.recycleOffered = false;
 
-            this.rentedToolRefs = new Dictionary<Tuple<List<Item>, int>, Item>();
             this.blackSmithCounterTiles = new List<Vector2>();
 
             // params init
@@ -78,43 +80,50 @@ namespace RentedTools
             return who.toolBeingUpgraded.Value;
         }
 
-        private void MenuCloseHandler(object sender, EventArgsClickableMenuClosed e)
+        /// <summary>Raised after a game menu is opened, closed, or replaced.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnMenuChanged(object sender, MenuChangedEventArgs e)
         {
-            if (this.shouldCreateFailedToRentTools)
+            // when menu closed
+            if (e.NewMenu == null)
             {
-                this.SetupFailedToRentDialog(this.player);
-                this.shouldCreateFailedToRentTools = false;
-                return;
-            }
-
-            if (this.shouldCreateSucceededToRentTools)
-            {
-                this.SetupSucceededToRentDialog(this.player);
-                this.shouldCreateSucceededToRentTools = false;
-                return;
-            }
-
-            if (this.rentedToolsOffered)
-            {
-                this.rentedToolsOffered = false;
-                return;
-            }
-
-            if (this.recycleOffered)
-            {
-                this.recycleOffered = false;
-                return;
-            }
-
-            if (this.inited && this.IsPlayerAtCounter(this.player))
-            {
-                if (this.player.toolBeingUpgraded.Value == null && this.HasRentedTools(this.player))
+                if (this.shouldCreateFailedToRentTools)
                 {
-                    this.SetupRentToolsRemovalDialog(this.player);
+                    this.SetupFailedToRentDialog(this.player);
+                    this.shouldCreateFailedToRentTools = false;
+                    return;
                 }
-                else if (this.ShouldOfferTools(this.player))
+
+                if (this.shouldCreateSucceededToRentTools)
                 {
-                    this.SetupRentToolsOfferDialog(this.player);
+                    this.SetupSucceededToRentDialog(this.player);
+                    this.shouldCreateSucceededToRentTools = false;
+                    return;
+                }
+
+                if (this.rentedToolsOffered)
+                {
+                    this.rentedToolsOffered = false;
+                    return;
+                }
+
+                if (this.recycleOffered)
+                {
+                    this.recycleOffered = false;
+                    return;
+                }
+
+                if (this.inited && this.IsPlayerAtCounter(this.player))
+                {
+                    if (this.player.toolBeingUpgraded.Value == null && this.HasRentedTools(this.player))
+                    {
+                        this.SetupRentToolsRemovalDialog(this.player);
+                    }
+                    else if (this.ShouldOfferTools(this.player))
+                    {
+                        this.SetupRentToolsOfferDialog(this.player);
+                    }
                 }
             }
         }

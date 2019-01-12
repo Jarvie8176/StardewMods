@@ -5,6 +5,6 @@
   "Description": "allows renting tools during upgrades",
   "UniqueID": "JarvieK.RentedTools",
   "EntryDll": "RentedTools.dll",
-  "MinimumApiVersion": "2.6-beta",
+  "MinimumApiVersion": "2.10.1",
   "UpdateKeys": [ "Nexus:1307" ]
 }

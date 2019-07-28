@@ -1,11 +1,12 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley;
+using StardewValley.Locations;
 using StardewValley.Menus;
-using System;
-using System.Collections.Generic;
 
 namespace SelfServe
 {
@@ -21,7 +22,21 @@ namespace SelfServe
 
         private bool inited = false;
 
-        private void OnLoad(object Sender, EventArgs e)
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        public override void Entry(IModHelper helper)
+        {
+            helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+            helper.Events.GameLoop.ReturnedToTitle += this.OnReturnedToTitle;
+
+            i18n = helper.Translation;
+        }
+
+        /// <summary>Raised after the player loads a save slot and the world is initialised.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
             // params reset
             seedShopCounterTiles = new List<Vector2>();
@@ -53,12 +68,12 @@ namespace SelfServe
                     case "Robin":
                     case "Marnie":
                     case "Willy":
-                       npcRefs[npc.Name] = npc;
+                        npcRefs[npc.Name] = npc;
                         break;
                 }
             }
 
-            foreach(var item in npcRefs)
+            foreach (var item in npcRefs)
             {
                 Monitor.Log(item.ToString());
             }
@@ -68,24 +83,21 @@ namespace SelfServe
             this.inited = true;
         }
 
-        private void OnExit(object Sender, EventArgs e)
+        /// <summary>Raised after the game returns to the title screen.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnReturnedToTitle(object sender, ReturnedToTitleEventArgs e)
         {
             inited = false;
         }
 
-        public override void Entry(IModHelper helper)
+        /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
         {
-            InputEvents.ButtonPressed += this.InputEvents_ButtonPressed;
-            SaveEvents.AfterLoad += this.OnLoad;
-            SaveEvents.AfterReturnToTitle += this.OnExit;
-
-            i18n = helper.Translation;
-        }
-
-        private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
-        {
-            if (this.inited && this.OpenMenuHandler(e.IsActionButton))
-                e.SuppressButton();
+            if (this.inited && this.OpenMenuHandler(e.Button.IsActionButton()))
+                this.Helper.Input.Suppress(e.Button);
         }
 
         private bool OpenMenuHandler(bool isActionKey)
@@ -94,7 +106,6 @@ namespace SelfServe
 
             String locationString = Game1.player.currentLocation.Name;
             Vector2 playerPosition = Game1.player.getTileLocation();
-            int faceDirection = Game1.player.getFacingDirection();
 
             bool result = false; // default
 
@@ -106,17 +117,20 @@ namespace SelfServe
                     case "SeedShop":
                         Game1.player.currentLocation.createQuestionDialogue(
                             i18n.Get("SeedShop_Menu"),
-                            new Response[2]
+                            new Response[]
                             {
                                 new Response("Shop", i18n.Get("SeedShopMenu_Shop")),
                                 new Response("Leave", i18n.Get("SeedShopMenu_Leave"))
                             },
-                            delegate(Farmer who, string whichAnswer)
+                            delegate (Farmer who, string whichAnswer)
                             {
                                 switch (whichAnswer)
                                 {
                                     case "Shop":
-                                        Game1.activeClickableMenu = (IClickableMenu)new ShopMenu(Utility.getShopStock(true), 0, "Pierre");
+                                        {
+                                            SeedShop shop = (SeedShop)Game1.getLocationFromName("SeedShop");
+                                            Game1.activeClickableMenu = new ShopMenu(shop.shopStock(), who: "Pierre", context: "Pierre");
+                                        }
                                         break;
                                     case "Leave":
                                         // do nothing
@@ -128,10 +142,11 @@ namespace SelfServe
                             }
                         );
                         break;
+
                     case "AnimalShop":
                         Game1.player.currentLocation.createQuestionDialogue(
                             i18n.Get("AnimalShop_Menu"),
-                            new Response[3]
+                            new Response[]
                             {
                                 new Response("Supplies", Game1.content.LoadString("Strings\\Locations:AnimalShop_Marnie_Supplies")),
                                 new Response("Purchase", Game1.content.LoadString("Strings\\Locations:AnimalShop_Marnie_Animals")),
@@ -140,37 +155,37 @@ namespace SelfServe
                             "Marnie"
                         );
                         break;
-                    case "ScienceHouse":
-                        if (Game1.player.daysUntilHouseUpgrade < 0 && !Game1.getFarm().isThereABuildingUnderConstruction())
-                        {
-                            Response[] answerChoices;
-                            if (Game1.player.HouseUpgradeLevel < 3)
-                                answerChoices = new Response[4]
-                                {
-                                    new Response("Shop", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Shop")),
-                                    new Response("Upgrade", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_UpgradeHouse")),
-                                    new Response("Construct", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Construct")),
-                                    new Response("Leave", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Leave"))
-                                };
-                            else
-                                answerChoices = new Response[3]
-                                {
-                                    new Response("Shop", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Shop")),
-                                    new Response("Construct", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Construct")),
-                                    new Response("Leave", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Leave"))
-                                };
 
-                            Game1.player.currentLocation.createQuestionDialogue(i18n.Get("ScienceHouse_CarpenterMenu"), answerChoices, "carpenter");
+                    case "ScienceHouse":
+                        if (Game1.player.daysUntilHouseUpgrade.Value < 0 && !Game1.getFarm().isThereABuildingUnderConstruction())
+                        {
+                            List<Response> choices = new List<Response>();
+                            choices.Add(new Response("Shop", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Shop")));
+                            if (Game1.IsMasterGame)
+                            {
+                                if (Game1.player.HouseUpgradeLevel < 3)
+                                    choices.Add(new Response("Upgrade", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_UpgradeHouse")));
+                                else if ((Game1.MasterPlayer.mailReceived.Contains("ccIsComplete") || Game1.MasterPlayer.mailReceived.Contains("JojaMember") || Game1.MasterPlayer.hasCompletedCommunityCenter()) && (((Town)Game1.getLocationFromName("Town")).daysUntilCommunityUpgrade.Value <= 0 && !Game1.MasterPlayer.mailReceived.Contains("pamHouseUpgrade")))
+                                    choices.Add(new Response("CommunityUpgrade", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_CommunityUpgrade")));
+                            }
+                            else if (Game1.player.HouseUpgradeLevel < 2)
+                                choices.Add(new Response("Upgrade", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_UpgradeCabin")));
+
+                            choices.Add(new Response("Construct", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Construct")));
+                            choices.Add(new Response("Leave", Game1.content.LoadString("Strings\\Locations:ScienceHouse_CarpenterMenu_Leave")));
+
+                            Game1.player.currentLocation.createQuestionDialogue(i18n.Get("ScienceHouse_CarpenterMenu"), choices.ToArray(), "carpenter");
                         }
                         else
                         {
-                            Game1.activeClickableMenu = (IClickableMenu)new ShopMenu(Utility.getCarpenterStock(), 0, "Robin");
+                            Game1.activeClickableMenu = new ShopMenu(Utility.getCarpenterStock(), who: "Robin");
                         }
                         break;
+
                     case "FishShop":
                         Game1.player.currentLocation.createQuestionDialogue(
                             (SDate.Now() != new SDate(9, "spring")) ? i18n.Get("FishShop_Menu") : i18n.Get("FishShop_Menu_DocVisit"),
-                            new Response[2]
+                            new Response[]
                             {
                                 new Response("Shop", i18n.Get("FishShopMenu_Shop")),
                                 new Response("Leave", i18n.Get("FishShopMenu_Leave"))
@@ -180,11 +195,13 @@ namespace SelfServe
                                 switch (whichAnswer)
                                 {
                                     case "Shop":
-                                        Game1.activeClickableMenu = (IClickableMenu)new ShopMenu(Utility.getFishShopStock(Game1.player), 0, "Willy");
+                                        Game1.activeClickableMenu = new ShopMenu(Utility.getFishShopStock(Game1.player), who: "Willy");
                                         break;
+
                                     case "Leave":
                                         // do nothing
                                         break;
+
                                     default:
                                         Monitor.Log($"invalid dialogue answer: {whichAnswer}", LogLevel.Info);
                                         break;
@@ -192,6 +209,7 @@ namespace SelfServe
                             }
                         );
                         break;
+
                     default:
                         Monitor.Log($"invalid location: {locationString}", LogLevel.Info);
                         break;
@@ -199,7 +217,6 @@ namespace SelfServe
             }
 
             return result;
-
         }
 
         private bool ShouldOpen(bool isActionKey, int facingDirection, String locationString, Vector2 playerLocation)

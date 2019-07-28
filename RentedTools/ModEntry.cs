@@ -285,7 +285,7 @@ namespace RentedTools
 
             int toolCost = this.GetToolCost(toolToBuy);
 
-            if (who.money >= toolCost && who.freeSpotsInInventory() > 0)
+            if (who.Money >= toolCost && who.freeSpotsInInventory() > 0)
             {
                 ShopMenu.chargePlayer(who, 0, toolCost);
                 who.addItemToInventory(toolToBuy);
